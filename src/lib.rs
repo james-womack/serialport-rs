@@ -311,6 +311,12 @@ impl SerialPortBuilder {
         posix::TTYPort::open(&self)
     }
 
+    /// Open a platform-specific interface to the port, without changing settings
+    #[cfg(unix)]
+    pub fn open_native_raw(self) -> Result<TTYPort> {
+        posix::TTYPort::open_raw(&self)
+    }
+
     /// Open a platform-specific interface to the port with the specified settings
     #[cfg(windows)]
     pub fn open_native(self) -> Result<COMPort> {
