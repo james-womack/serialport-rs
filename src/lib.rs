@@ -290,6 +290,21 @@ impl SerialPortBuilder {
         ))
     }
 
+    /// Open a cross-platform interface to the port, without changing settings
+    pub fn open_raw(self) -> Result<Box<dyn SerialPort>> {
+        #[cfg(unix)]
+        return posix::TTYPort::open_raw(&self).map(|p| Box::new(p) as Box<dyn SerialPort>);
+
+        #[cfg(windows)]
+        return windows::COMPort::open(&self).map(|p| Box::new(p) as Box<dyn SerialPort>);
+
+        #[cfg(not(any(unix, windows)))]
+        Err(Error::new(
+            ErrorKind::Unknown,
+            "open() not implemented for platform",
+        ))
+    }
+
     /// Open a platform-specific interface to the port with the specified settings
     #[cfg(unix)]
     pub fn open_native(self) -> Result<TTYPort> {
