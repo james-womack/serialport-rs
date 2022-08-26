@@ -192,7 +192,7 @@ impl TTYPort {
         let path = Path::new(&builder.path);
         let fd = OwnedFd(nix::fcntl::open(
             path,
-            OFlag::O_RDONLY | OFlag::O_NOCTTY | OFlag::O_NONBLOCK,
+            OFlag::O_RDWR | OFlag::O_NOCTTY,
             nix::sys::stat::Mode::empty(),
         )?);
 
