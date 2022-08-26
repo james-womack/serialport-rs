@@ -123,7 +123,7 @@ impl TTYPort {
         // Try to claim exclusive access to the port. This is performed even
         // if the port will later be set as non-exclusive, in order to respect
         // other applications that may have an exclusive port lock.
-        ioctl::tiocexcl(fd.0)?;
+        //ioctl::tiocexcl(fd.0)?;
 
         let mut termios = MaybeUninit::uninit();
         nix::errno::Errno::result(unsafe { tcgetattr(fd.0, termios.as_mut_ptr()) })?;
@@ -186,8 +186,8 @@ impl TTYPort {
     /// Opens the serial port without changing any settings, including setting to RAW mode
     /// Expects user to set port via stty to configure properly before opening.
     pub fn open_raw(builder: &SerialPortBuilder) -> Result<TTYPort> {
-        // use nix::fcntl::FcntlArg::F_SETFL;
-        // use nix::libc::{cfmakeraw, tcgetattr, tcsetattr};
+        use nix::fcntl::FcntlArg::F_SETFL;
+        use nix::libc::{cfmakeraw, tcgetattr, tcsetattr};
 
         let path = Path::new(&builder.path);
         let fd = OwnedFd(nix::fcntl::open(
@@ -196,39 +196,39 @@ impl TTYPort {
             nix::sys::stat::Mode::empty(),
         )?);
 
-        // let mut termios = MaybeUninit::uninit();
-        // nix::errno::Errno::result(unsafe { tcgetattr(fd.0, termios.as_mut_ptr()) })?;
-        // let mut termios = unsafe { termios.assume_init() };
-        //
-        // // setup TTY for binary serial port access
-        // // Enable reading from the port and ignore all modem control lines
-        // termios.c_cflag |= libc::CREAD | libc::CLOCAL;
-        // // Enable raw mode which disables any implicit processing of the input or output data streams
-        // // This also sets no timeout period and a read will block until at least one character is
-        // // available.
-        // unsafe { cfmakeraw(&mut termios) };
-        //
-        // // write settings to TTY
-        // unsafe { tcsetattr(fd.0, libc::TCSANOW, &termios) };
-        //
-        // // Read back settings from port and confirm they were applied correctly
-        // let mut actual_termios = MaybeUninit::uninit();
-        // unsafe { tcgetattr(fd.0, actual_termios.as_mut_ptr()) };
-        // let actual_termios = unsafe { actual_termios.assume_init() };
-        //
-        // if actual_termios.c_iflag != termios.c_iflag
-        //     || actual_termios.c_oflag != termios.c_oflag
-        //     || actual_termios.c_lflag != termios.c_lflag
-        //     || actual_termios.c_cflag != termios.c_cflag
-        // {
-        //     return Err(Error::new(
-        //         ErrorKind::Unknown,
-        //         "Settings did not apply correctly",
-        //     ));
-        // };
-        //
-        // // clear O_NONBLOCK flag
-        // fcntl(fd.0, F_SETFL(nix::fcntl::OFlag::empty()))?;
+        let mut termios = MaybeUninit::uninit();
+        nix::errno::Errno::result(unsafe { tcgetattr(fd.0, termios.as_mut_ptr()) })?;
+        let mut termios = unsafe { termios.assume_init() };
+
+        // setup TTY for binary serial port access
+        // Enable reading from the port and ignore all modem control lines
+        termios.c_cflag |= libc::CREAD | libc::CLOCAL;
+        // Enable raw mode which disables any implicit processing of the input or output data streams
+        // This also sets no timeout period and a read will block until at least one character is
+        // available.
+        unsafe { cfmakeraw(&mut termios) };
+
+        // write settings to TTY
+        unsafe { tcsetattr(fd.0, libc::TCSANOW, &termios) };
+
+        // Read back settings from port and confirm they were applied correctly
+        let mut actual_termios = MaybeUninit::uninit();
+        unsafe { tcgetattr(fd.0, actual_termios.as_mut_ptr()) };
+        let actual_termios = unsafe { actual_termios.assume_init() };
+
+        if actual_termios.c_iflag != termios.c_iflag
+            || actual_termios.c_oflag != termios.c_oflag
+            || actual_termios.c_lflag != termios.c_lflag
+            || actual_termios.c_cflag != termios.c_cflag
+        {
+            return Err(Error::new(
+                ErrorKind::Unknown,
+                "Settings did not apply correctly",
+            ));
+        };
+
+        // clear O_NONBLOCK flag
+        fcntl(fd.0, F_SETFL(nix::fcntl::OFlag::empty()))?;
 
         // Return the final port object
         Ok(TTYPort {
